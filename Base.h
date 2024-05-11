@@ -11,10 +11,18 @@
 using myfunc::Random;
 
 //Game configuration
+//HARD_MODE
+//#define COLOR_NUM 7
+//#define BOARD_SIZE 9
+//#define COMING_CHESS_NUM 3
+//#define MIN_ELEMINATABLE_NUM 5
+
+//EASY_MODE
 #define COLOR_NUM 4
 #define BOARD_SIZE 5
 #define COMING_CHESS_NUM 2
 #define MIN_ELEMINATABLE_NUM 4
+
 #define INVALID_MOVE_PENALTY -2
 #define EACH_CHESS_ELEMINATED_REWARD 2
 #define CHESS_NUM (BOARD_SIZE * BOARD_SIZE)

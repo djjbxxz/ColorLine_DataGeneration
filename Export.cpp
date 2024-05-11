@@ -30,7 +30,7 @@ PYBIND11_MODULE(gen_colorline_data_tensorflow, m)
 	m.def("get_path", &get_path);
 	m.def("seed", &seed);
 
-
+	//add constructor
 	pybind11::class_<Game_map>(m, "Game_map", pybind11::buffer_protocol())
 		.def_buffer([](Game_map& m) -> pybind11::buffer_info {
 		return pybind11::buffer_info(
@@ -42,7 +42,57 @@ PYBIND11_MODULE(gen_colorline_data_tensorflow, m)
 			{ sizeof(char) * BOARD_SIZE, sizeof(char) }   /* Strides (in bytes) for each index */
 	);
 
-			});
+			})
+		.def(pybind11::init([](py::array arr) ->Game_map {
+				py::buffer_info info = arr.request();
+			if (arr.dtype().kind() != 'i') {
+				std::cout << "Invalid data type, must be int" << std::endl;
+				return Game_map();
+			}
+			if (info.ndim != 2) {
+				std::cout << "Invalid data shape, must be 2D" << std::endl;
+				return Game_map();
+			}
+			if (info.shape[0] != BOARD_SIZE || info.shape[1] != BOARD_SIZE) {
+				std::cout << "Invalid data shape, must be " << BOARD_SIZE << "x" << BOARD_SIZE << std::endl;
+				return Game_map();
+			}
+			auto ptr = static_cast<int*>(info.ptr);
+			return Game_map(ptr);
+			}))
+
+		.def("set_coming_chess", [](Game_map& m, py::array arr) {
+			py::buffer_info info = arr.request();
+		if (arr.dtype().kind() != 'i') {
+			std::cout << "Invalid data type, must be int" << std::endl;
+			return;
+		}
+		if (info.ndim != 1) {
+			std::cout << "Invalid data shape, must be 1D" << std::endl;
+			return;
+		}
+		if (info.shape[0] != COMING_CHESS_NUM) {
+			std::cout << "Invalid data shape, must be " << COMING_CHESS_NUM << std::endl;
+			return;
+		}
+		auto ptr = static_cast<int*>(info.ptr);
+		std::array<Color, COMING_CHESS_NUM> coming_chess;
+		FOR_RANGE(i, COMING_CHESS_NUM)
+			coming_chess[i] = Color(ptr[i]);
+
+		m.set_coming_chess(coming_chess);
+		})
+		.def("get_coming_chess", [](Game_map& m) {
+			py::array_t<int> arr({ COMING_CHESS_NUM });
+			auto ptr = arr.mutable_unchecked<1>();
+			FOR_RANGE(i, COMING_CHESS_NUM)
+				ptr(i) = char(m.coming_chess[i].value);
+			return arr;
+			})
+		
+		;
+		
+		
 
 	pybind11::class_<Moveable_mask>(m, "Moveable_mask", pybind11::buffer_protocol())
 		.def_buffer([](Moveable_mask& m) -> pybind11::buffer_info {
