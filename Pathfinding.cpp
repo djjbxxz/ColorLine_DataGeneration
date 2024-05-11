@@ -34,7 +34,7 @@ A_star::Path_tree_Node* A_star::algorithm_main()
 	assert(true);//No path found
 
 #endif // DEBUG
-
+	return nullptr;
 }
 
 A_star::Path_tree_Node* A_star::get_point_from_openlist()
