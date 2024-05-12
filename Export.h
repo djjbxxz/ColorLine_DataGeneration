@@ -13,47 +13,148 @@
 constexpr auto INPUT_CHANNEL_SIZE = (1 + COMING_CHESS_NUM) * COLOR_NUM;
 namespace export_bind
 {
-	class game_statu_9928
+	class Game_statu_9928;
+	class Game_statu_994;
+	int color_one_hot_to_index(int* one_hot)
+	{
+		FOR_RANGE(i, COLOR_NUM)
+		{
+			if (one_hot[i] == 1)
+				return i + 1;
+		}
+		return 0;
+	}
+	class Game_statu_9928
 	{
 	public:
-		game_statu_9928() {
-			int* t = (int*)value;
-			FOR_RANGE(i, BOARD_SIZE * BOARD_SIZE * INPUT_CHANNEL_SIZE)
-				* (t + i) = 0;
-		};
-		game_statu_9928(const Game_map& game_statu) {
-			auto game_map = game_statu._data;
-			auto coming_chess = game_statu.coming_chess;
-			int* ptr_game_map_9928 = (int*)value;
-			FOR_RANGE(i, BOARD_SIZE * BOARD_SIZE * INPUT_CHANNEL_SIZE)
-				* (ptr_game_map_9928 + i) = 0;
+		Game_statu_9928() {};
+		Game_statu_9928(const Game_map& game_map)
+		{
+			auto&& game_board = game_map._data;
+			auto&& coming_chess = game_map.coming_chess;
 
-
-			for (int index = 0; index < COMING_CHESS_NUM; index++)
+			FOR_RANGE(i, BOARD_SIZE)
+				FOR_RANGE(j, BOARD_SIZE)
+			{
+				int color = (int)game_board[i * BOARD_SIZE + j];
+				if (color)
+					value[i][j][color - 1] = 1;
+			}
+			FOR_RANGE(index, COMING_CHESS_NUM)
 			{
 				int color = (int)coming_chess[index];
-				for (int i = 0; i < BOARD_SIZE; i++)
-				{
-					for (int j = 0; j < BOARD_SIZE; j++)
-					{
-						value[i][j][(COLOR_NUM - 1) + index * COLOR_NUM + color] = 1;
-					}
-				}
-
-			}
-
-			for (int i = 0; i < BOARD_SIZE; i++)
-			{
-				for (int j = 0; j < BOARD_SIZE; j++)
-				{
-					int t = (int)game_map[i * BOARD_SIZE + j];
-					if (t)
-						value[i][j][t - 1] = 1;
-				}
+				FOR_RANGE(i, BOARD_SIZE)
+					FOR_RANGE(j, BOARD_SIZE)
+					value[i][j][(COLOR_NUM - 1) + index * COLOR_NUM + color] = 1;
 			}
 		}
-		int value[BOARD_SIZE][BOARD_SIZE][INPUT_CHANNEL_SIZE];
+
+		Game_map to_game_map()
+		{
+			Game_map game_map;
+			auto&& game_board = game_map._data;
+			auto&& coming_chess = game_map.coming_chess;
+			game_board = { 0 };
+			coming_chess = { 0 };
+			FOR_RANGE(i, BOARD_SIZE)
+			{
+				FOR_RANGE(j, BOARD_SIZE)
+				{
+					auto color_one_hot = std::array<int, COLOR_NUM>{0};
+					FOR_RANGE(k, COLOR_NUM)
+						color_one_hot[k] = value[i][j][k];
+
+					int color = color_one_hot_to_index(color_one_hot.data());
+					game_board[i * BOARD_SIZE + j] = color;
+				}
+			}
+			FOR_RANGE(index, COMING_CHESS_NUM)
+			{
+				auto color_one_hot = std::array<int, COLOR_NUM>{0};
+				FOR_RANGE(k, COLOR_NUM)
+					color_one_hot[k] = value[0][0][COLOR_NUM + index * COLOR_NUM + k];
+
+				int color = color_one_hot_to_index(color_one_hot.data());
+				coming_chess[index] = color;
+			}
+			return game_map;
+		}
+		Game_statu_9928(const int* data)
+		{
+			int* value_ptr = reinterpret_cast<int*>(value);
+			FOR_RANGE(p, BOARD_SIZE * BOARD_SIZE * INPUT_CHANNEL_SIZE)
+				* (value_ptr + p) = *(data + p);
+		}
+		int value[BOARD_SIZE][BOARD_SIZE][INPUT_CHANNEL_SIZE]{ 0 };
+
 	};
+
+	class Game_statu_994
+	{
+	public:
+		Game_statu_994() {};
+		Game_statu_994(std::array<int, BOARD_SIZE* BOARD_SIZE* (COMING_CHESS_NUM + 1)>& game_statu_9928)
+		{
+			auto ptr_game_map_9928 = reinterpret_cast<int(*)[BOARD_SIZE][INPUT_CHANNEL_SIZE]>(game_statu_9928.data());
+			int game_board[BOARD_SIZE][BOARD_SIZE]{ 0 };
+			int coming_chess[COMING_CHESS_NUM]{ 0 };
+			FOR_RANGE(i, BOARD_SIZE)
+			{
+				FOR_RANGE(j, BOARD_SIZE)
+				{
+					std::array<int, COLOR_NUM> color_one_hot{ 0 };
+					FOR_RANGE(k, COLOR_NUM)
+						color_one_hot[k] = ptr_game_map_9928[i][j][k];
+					int color = color_one_hot_to_index(color_one_hot.data());
+					game_board[i][j] = color;
+				}
+			}
+			FOR_RANGE(i, COMING_CHESS_NUM)
+			{
+				std::array<int, COLOR_NUM> color_one_hot{ 0 };
+				FOR_RANGE(j, COLOR_NUM)
+					color_one_hot[j] = ptr_game_map_9928[0][0][COLOR_NUM + i * COLOR_NUM + j];
+				coming_chess[i] = color_one_hot_to_index(color_one_hot.data());
+			}
+
+			FOR_RANGE(i, BOARD_SIZE)
+				FOR_RANGE(j, BOARD_SIZE)
+				value[i][j][0] = game_board[i][j];
+			FOR_RANGE(k, COMING_CHESS_NUM)
+				FOR_RANGE(i, BOARD_SIZE)
+				FOR_RANGE(j, BOARD_SIZE)
+				value[i][j][k + 1] = coming_chess[k];
+		}
+		Game_statu_994(int* ptr)
+		{
+			int* value_ptr = reinterpret_cast<int*>(value);
+			FOR_RANGE(p, BOARD_SIZE * BOARD_SIZE * (COMING_CHESS_NUM + 1))
+				* (value_ptr + p) = *(ptr + p);
+		}
+		Game_statu_994(const Game_map& game_map)
+		{
+			FOR_RANGE(i, BOARD_SIZE)
+				FOR_RANGE(j, BOARD_SIZE)
+				value[i][j][0] = int(game_map._data[i * BOARD_SIZE + j]);
+			FOR_RANGE(k, COMING_CHESS_NUM)
+				FOR_RANGE(i, BOARD_SIZE)
+				FOR_RANGE(j, BOARD_SIZE)
+				value[i][j][k + 1] = int(game_map.coming_chess[k]);
+		}
+		Game_map to_game_map()
+		{
+			Game_map game_map;
+			FOR_RANGE(i, BOARD_SIZE)
+				FOR_RANGE(j, BOARD_SIZE)
+				game_map._data[i * BOARD_SIZE + j] = value[i][j][0];
+			FOR_RANGE(k, COMING_CHESS_NUM)
+				game_map.coming_chess[k] = value[0][0][k + 1];
+			return game_map;
+		}
+		int value[BOARD_SIZE][BOARD_SIZE][COMING_CHESS_NUM + 1]{ 0 };
+
+	};
+
 	class Point_int
 	{
 	public:
@@ -79,10 +180,7 @@ namespace export_bind
 	{
 		return Legal_mask(game_map).get_result();
 	}
-	game_statu_9928 _994_to_9928(const Game_map& game_map)
-	{
-		return game_statu_9928(game_map);
-	}
+
 	int rule(Game_map& game_map, int move)
 	{
 		return Game_rule(game_map, Move(move)).rule();

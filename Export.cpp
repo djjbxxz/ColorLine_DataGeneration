@@ -15,7 +15,7 @@ PYBIND11_MODULE(gen_colorline_data_tensorflow, m)
 	oss << "INVALID_MOVE_PENALTY: " << INVALID_MOVE_PENALTY << std::endl;
 	oss << "EACH_CHESS_ELEMINATED_REWARD: " << EACH_CHESS_ELEMINATED_REWARD << std::endl;
 	oss << std::endl << "Compiled for Tensorflow" << " | Python version : " << PYVERSION \
-		<< " | System : " << SYSTEM_NAME << " " << SYSTEM_VERSION << std::endl;
+		<< " | System : " << SYSTEM_NAME << " " << SYSTEM_VERSION << " | Compile time : " << COMPILE_TIME << std::endl;
 
 	oss << std::endl << "***********Configuration***********" << std::endl << std::endl;
 
@@ -25,12 +25,10 @@ PYBIND11_MODULE(gen_colorline_data_tensorflow, m)
 
 	m.def("get_random_start", &generate_data);
 	m.def("get_valid_mask", &get_valid_mask);
-	m.def("_994_to_9928", &_994_to_9928);
 	m.def("rule", &rule);
 	m.def("get_path", &get_path);
 	m.def("seed", &seed);
 
-	//add constructor
 	pybind11::class_<Game_map>(m, "Game_map", pybind11::buffer_protocol())
 		.def_buffer([](Game_map& m) -> pybind11::buffer_info {
 		return pybind11::buffer_info(
@@ -49,18 +47,35 @@ PYBIND11_MODULE(gen_colorline_data_tensorflow, m)
 				std::cout << "Invalid data type, must be int" << std::endl;
 				return Game_map();
 			}
-			if (info.ndim != 2) {
-				std::cout << "Invalid data shape, must be 2D" << std::endl;
-				return Game_map();
-			}
 			if (info.shape[0] != BOARD_SIZE || info.shape[1] != BOARD_SIZE) {
 				std::cout << "Invalid data shape, must be " << BOARD_SIZE << "x" << BOARD_SIZE << std::endl;
 				return Game_map();
 			}
-			auto ptr = static_cast<int*>(info.ptr);
-			return Game_map(ptr);
+			if (info.ndim == 2) {
+				//std::cout << "Warning: comming chess is not set" << std::endl;
+				return Game_map((int*)(arr.data()));
+			}
+			if (info.ndim == 3 && info.shape[2] == (COMING_CHESS_NUM+1))
+			{
+				return Game_statu_994((int*)(arr.data())).to_game_map();
+			}
+			if (info.ndim == 3 && info.shape[2] == INPUT_CHANNEL_SIZE)
+			{
+				return Game_statu_9928((int*)(arr.data())).to_game_map();
+			}
+			std::cout << "Invalid data" << std::endl << "number of dim: " << info.ndim << std::endl;
+			std::cout << "shape: ";
+			FOR_RANGE(d, info.ndim)
+				std::cout << info.shape[d] << " ";
+			std::cout << std::endl;
+			return Game_map();
 			}))
-
+		.def(pybind11::init([](Game_statu_994 _994) ->Game_map {
+			return _994.to_game_map();
+		}))
+		.def(pybind11::init([](Game_statu_9928 _9928) ->Game_map {
+			return _9928.to_game_map();
+		}))
 		.def("set_coming_chess", [](Game_map& m, py::array arr) {
 			py::buffer_info info = arr.request();
 		if (arr.dtype().kind() != 'i') {
@@ -89,11 +104,8 @@ PYBIND11_MODULE(gen_colorline_data_tensorflow, m)
 				ptr(i) = char(m.coming_chess[i].value);
 			return arr;
 			})
-		
 		;
 		
-		
-
 	pybind11::class_<Moveable_mask>(m, "Moveable_mask", pybind11::buffer_protocol())
 		.def_buffer([](Moveable_mask& m) -> pybind11::buffer_info {
 		return pybind11::buffer_info(
@@ -119,8 +131,8 @@ PYBIND11_MODULE(gen_colorline_data_tensorflow, m)
 
 			});
 
-	pybind11::class_<game_statu_9928>(m, "game_statu_9928", pybind11::buffer_protocol())
-		.def_buffer([](game_statu_9928& m) -> pybind11::buffer_info {
+	pybind11::class_<Game_statu_9928>(m, "Game_statu_9928", pybind11::buffer_protocol())
+		.def_buffer([](Game_statu_9928& m) -> pybind11::buffer_info {
 		return pybind11::buffer_info(
 			&m.value,								/* Pointer to buffer */
 			sizeof(int),									/* Size of one scalar */
@@ -128,9 +140,91 @@ PYBIND11_MODULE(gen_colorline_data_tensorflow, m)
 			3,												/* Number of dimensions */
 			{ BOARD_SIZE,BOARD_SIZE ,INPUT_CHANNEL_SIZE },						/* Buffer dimensions */
 			{ sizeof(int) * BOARD_SIZE * INPUT_CHANNEL_SIZE,sizeof(int) * INPUT_CHANNEL_SIZE,sizeof(int) }   /* Strides (in bytes) for each index */
+			);})
+		.def(pybind11::init([](py::array arr) ->Game_statu_9928 {
+				py::buffer_info info = arr.request();
+			if (arr.dtype().kind() != 'i') {
+				std::cout << "Invalid data type, must be int" << std::endl;
+				return Game_statu_9928();
+			}
+			if (info.ndim != 3) {
+				std::cout << "Invalid data shape, must be 3D" << std::endl;
+				return Game_statu_9928();
+			}
+			if (info.shape[0] == BOARD_SIZE && info.shape[1] == BOARD_SIZE)
+			{
+				auto data = static_cast<int*>(info.ptr);
+				switch (info.shape[2])
+				{
+				case COMING_CHESS_NUM + 1: 
+					return Game_statu_9928(Game_statu_994(data).to_game_map());
+				case INPUT_CHANNEL_SIZE:
+					return Game_statu_9928(data);
+				default:
+					break;
+				}
+			}
+			std::cout << "Invalid data shape, must be " << BOARD_SIZE << "x" << BOARD_SIZE << "x" << INPUT_CHANNEL_SIZE << "/"  << (COMING_CHESS_NUM+1) << std::endl;
+			return Game_statu_9928();
+			}))
+		.def(pybind11::init([](Game_statu_994& game_statu_994) ->Game_statu_9928 {
+			return Game_statu_9928(game_statu_994.to_game_map());
+			}))
+		.def(pybind11::init([](Game_statu_9928& game_statu_9928) ->Game_statu_9928 {
+			return game_statu_9928;
+			}))
+		.def(pybind11::init([](Game_map& game_map) ->Game_statu_9928 {
+			return Game_statu_9928(game_map);
+			}));
+
+	pybind11::class_<Game_statu_994>(m, "Game_statu_994", pybind11::buffer_protocol())
+		.def_buffer([](Game_statu_994& m) -> pybind11::buffer_info {
+		return pybind11::buffer_info(
+			&m.value,								/* Pointer to buffer */
+			sizeof(int),									/* Size of one scalar */
+			pybind11::format_descriptor<int>::format(),	/* Python struct-style format descriptor */
+			3,												/* Number of dimensions */
+			{ BOARD_SIZE,BOARD_SIZE ,COMING_CHESS_NUM+1 },						/* Buffer dimensions */
+			{ sizeof(int) * BOARD_SIZE * (COMING_CHESS_NUM+1),sizeof(int) * (COMING_CHESS_NUM+1),sizeof(int)}   /* Strides (in bytes) for each index */
 	);
 
-			});
+			})
+		.def(pybind11::init([](py::array arr) ->Game_statu_994 {
+			py::buffer_info info = arr.request();
+		if (arr.dtype().kind() != 'i') {
+			std::cout << "Invalid data type, must be int" << std::endl;
+			return Game_statu_994();
+		}
+		if (info.ndim != 3) {
+			std::cout << "Invalid data shape, must be 3D" << std::endl;
+			return Game_statu_994();
+		}
+		if (info.shape[0] == BOARD_SIZE && info.shape[1] == BOARD_SIZE)
+		{
+			auto data = static_cast<int*>(info.ptr);
+			switch (info.shape[2])
+			{
+			case COMING_CHESS_NUM + 1:
+				return Game_statu_994(data);
+			case INPUT_CHANNEL_SIZE:
+				return Game_statu_994(Game_statu_9928(data).to_game_map());
+			default:
+				break;
+			}
+		}
+		std::cout << "Invalid data shape, must be " << BOARD_SIZE << "x" << BOARD_SIZE << "x" << INPUT_CHANNEL_SIZE << "/" << (COMING_CHESS_NUM + 1) << std::endl;
+		return Game_statu_994();
+			}))
+		.def(pybind11::init([](Game_statu_994& game_statu_994) ->Game_statu_994 {
+			return game_statu_994;
+			}))
+		.def(pybind11::init([](Game_statu_9928& game_statu_9928) ->Game_statu_994 {
+			return Game_statu_994(game_statu_9928.to_game_map());
+			}))
+		.def(pybind11::init([](Game_map& game_map) ->Game_statu_994 {
+		return Game_statu_994(game_map);
+			}));
+
 
 	pybind11::class_<Point_int>(m, "Point")
 		.def(pybind11::init<int, int>())

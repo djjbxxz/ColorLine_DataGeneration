@@ -45,7 +45,7 @@ class Color {
 public:
 	Color(_color _value) :value(_value) {};
 	Color() :value(_color::empty) {};
-	Color(char _value):value(_color(_value)) {};
+	Color(char _value) :value(_color(_value)) {};
 public:
 	_color value;
 	static const std::array<Color, COLOR_NUM> all_color;
@@ -361,7 +361,7 @@ public:
 		_data = std::move(g._data);
 		coming_chess = std::move(g.coming_chess);
 	};
-	Game_map(int _map[])
+	Game_map(const int _map[])
 	{
 		FOR_RANGE(i, CHESS_NUM)
 			_data[i] = _map[i];
@@ -385,7 +385,7 @@ public:
 private:
 	static std::array<Point, CHESS_NUM> _empty_init();
 public:
-	std::array<Color, COMING_CHESS_NUM> coming_chess;
+	std::array<Color, COMING_CHESS_NUM> coming_chess{ 0 };
 #ifdef _PRINT
 public:
 	void print()const;

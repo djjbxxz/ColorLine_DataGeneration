@@ -10,7 +10,9 @@
 #define SYSTEM_VERSION "UNKOWN"
 #endif // !SYSTEM_VERSION
 
-
+#ifndef COMPILE_TIME
+#define COMPILE_TIME "UNKOWN"
+#endif // !COMPILE_TIME
 
 // Print on compile time
 #pragma message(PRINT_MACRO_NAME_VALUE(COLOR_NUM))
@@ -32,3 +34,7 @@
 #pragma message(PRINT_MACRO_NAME_VALUE(SYSTEM_VERSION))
 #endif // SYSTEM_VERSION
 #endif // SYSTEM_NAME
+
+#ifdef COMPILE_TIME
+#pragma message(PRINT_MACRO_NAME_VALUE(COMPILE_TIME))
+#endif // COMPILE_TIME
